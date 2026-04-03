@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tribunal.mc | Minecraft Justice</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <style>
+        :root { --bg: #050505; --accent: #ffffff; --glass: rgba(255, 255, 255, 0.03); --border: rgba(255, 255, 255, 0.1); }
+        body { background-color: var(--bg); color: white; font-family: 'Inter', sans-serif; overflow-x: hidden; scroll-behavior: smooth; }
+        .font-heading { font-family: 'Space Grotesk', sans-serif; }
+        .glass { background: var(--glass); backdrop-filter: blur(12px); border: 1px solid var(--border); border-radius: 24px; }
+        .glow-text { text-shadow: 0 0 20px rgba(255, 255, 255, 0.3); }
+        .btn-primary { background: white; color: black; transition: all 0.3s ease; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(255, 255, 255, 0.1); }
+        .case-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
+        .case-card:hover { border-color: rgba(255, 255, 255, 0.3); background: rgba(255, 255, 255, 0.05); }
+        .loader { border: 2px solid #f3f3f3; border-top: 2px solid #ffffff; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; display: inline-block; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <nav class="fixed w-full z-50 px-6 py-4 flex justify-between items-center backdrop-blur-md border-b border-white/5">
+        <div class="font-heading font-bold text-xl tracking-tighter uppercase">Tribunal.mc</div>
+        <div id="auth-buttons">
+            <button onclick="showSection('auth')" class="text-sm border border-white/20 px-5 py-2 rounded-full hover:bg-white hover:text-black transition">Join Server</button>
+        </div>
+    </nav>
+
+    <main>
+        <!-- Hero Section -->
+        <section id="hero" class="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+            <h1 class="font-heading text-6xl md:text-8xl font-bold mb-6 tracking-tighter glow-text leading-none">
+                JUSTICE IN <br><span class="text-gray-500">THE OVERWORLD.</span>
+            </h1>
+            <p class="text-gray-400 text-lg md:text-xl mb-10 max-w-2xl font-light leading-relaxed">
+                The first Minecraft server where betrayal has consequences. Our AI Tribunal ensures every grief is judged with absolute fairness.
+            </p>
+            <button onclick="showSection('auth')" class="btn-primary px-10 py-4 rounded-full font-semibold">Start Your Journey</button>
+        </section>
+
+        <!-- Auth Section -->
+        <section id="auth-section" class="hidden min-h-screen flex items-center justify-center px-6">
+            <div class="glass p-10 w-full max-w-md">
+                <h2 id="auth-title" class="font-heading text-3xl font-bold mb-8">Sign In</h2>
+                <form id="auth-form" class="space-y-4">
+                    <input type="text" id="email" placeholder="Minecraft Username" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-white/40 outline-none" required>
+                    <input type="password" id="password" placeholder="Access Key" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-white/40 outline-none" required>
+                    <button type="submit" id="auth-submit" class="w-full btn-primary py-4 rounded-xl font-bold mt-4">Access Tribunal</button>
+                </form>
+                <button onclick="toggleAuthMode()" id="auth-toggle" class="w-full text-center mt-6 text-sm text-gray-500 underline">New to the realm? Create Account</button>
+            </div>
+        </section>
+
+        <!-- Dashboard Section -->
+        <section id="courtroom-section" class="hidden min-h-screen px-6 py-24 max-w-6xl mx-auto">
+            <div class="flex justify-between items-end mb-12">
+                <h2 class="font-heading text-4xl font-bold">The Courtroom</h2>
+                <button onclick="document.getElementById('new-case-modal').style.display='flex'" class="btn-primary px-6 py-3 rounded-full text-sm font-bold">+ New Case</button>
+            </div>
+            <div id="case-list" class="space-y-4"><p class="text-gray-500">Loading cases...</p></div>
+        </section>
+    </main>
+
+    <!-- New Case Modal -->
+    <div id="new-case-modal" class="fixed inset-0 bg-black/90 z-[100] hidden items-center justify-center p-6">
+        <div class="glass p-8 w-full max-w-2xl relative">
+            <button onclick="this.parentElement.parentElement.style.display='none'" class="absolute top-6 right-6 text-gray-500 text-2xl">&times;</button>
+            <h3 class="font-heading text-2xl font-bold mb-6">File Complaint</h3>
+            <input type="text" id="accused-name" placeholder="Accused Player" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 mb-4 outline-none">
+            <textarea id="case-description" rows="5" placeholder="Description of event..." class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 mb-4 outline-none"></textarea>
+            <button onclick="submitCase()" class="w-full btn-primary py-4 rounded-xl font-bold">Submit</button>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIG ---
+        const CLOUDFLARE_WORKER_URL = "https://your-worker-subdomain.workers.dev"; // UPDATE THIS
+        const firebaseConfig = JSON.parse(__firebase_config);
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-tribunal';
+
+        let currentUser = null;
+        let isLogin = true;
+
+        // --- CORE LOGIC ---
+        window.showSection = (sectionName) => {
+            // Mapping short names to actual DOM IDs
+            const sectionMap = {
+                'hero': 'hero',
+                'auth': 'auth-section',
+                'courtroom': 'courtroom-section'
+            };
+
+            const targetId = sectionMap[sectionName];
+
+            // Hide all potential sections
+            Object.values(sectionMap).forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.add('hidden');
+            });
+
+            // Show target
+            const targetEl = document.getElementById(targetId);
+            if (targetEl) {
+                targetEl.classList.remove('hidden');
+            }
+        };
+
+        // --- AUTH ---
+        auth.onAuthStateChanged(user => {
+            currentUser = user;
+            if (user) {
+                document.getElementById('auth-buttons').innerHTML = `<button onclick="auth.signOut()" class="text-sm border border-white/20 px-5 py-2 rounded-full hover:bg-white hover:text-black transition">Logout</button>`;
+                showSection('courtroom');
+                loadCases();
+            } else {
+                showSection('hero');
+            }
+        });
+
+        window.toggleAuthMode = () => {
+            isLogin = !isLogin;
+            document.getElementById('auth-title').innerText = isLogin ? 'Sign In' : 'Create Account';
+            document.getElementById('auth-submit').innerText = isLogin ? 'Access Tribunal' : 'Join Server';
+            document.getElementById('auth-toggle').innerText = isLogin ? "New to the realm? Create Account" : "Have an account? Sign In";
+        };
+
+        document.getElementById('auth-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value + "@tribunal.com";
+            const pass = document.getElementById('password').value;
+            try {
+                if (isLogin) await auth.signInWithEmailAndPassword(email, pass);
+                else await auth.createUserWithEmailAndPassword(email, pass);
+            } catch (err) { alert(err.message); }
+        };
+
+        window.submitCase = async () => {
+            const accused = document.getElementById('accused-name').value;
+            const desc = document.getElementById('case-description').value;
+            if (!accused || !desc || !currentUser) return;
+            try {
+                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('cases').add({
+                    accuser: currentUser.email ? currentUser.email.split('@')[0] : 'Anonymous', 
+                    accused, 
+                    description: desc, 
+                    status: 'pending', 
+                    timestamp: Date.now()
+                });
+                document.getElementById('new-case-modal').style.display = 'none';
+            } catch(e) {
+                console.error("Error adding case:", e);
+            }
+        };
+
+        function loadCases() {
+            db.collection('artifacts').doc(appId).collection('public').doc('data').collection('cases')
+                .onSnapshot(snap => {
+                    const list = document.getElementById('case-list');
+                    if (!list) return;
+                    
+                    if (snap.empty) {
+                        list.innerHTML = `<p class="text-gray-500 text-center py-10">The world is peaceful. No active cases.</p>`;
+                        return;
+                    }
+
+                    list.innerHTML = snap.docs.map(doc => {
+                        const c = doc.data();
+                        return `
+                        <div class="case-card glass p-6">
+                            <div class="flex justify-between mb-2">
+                                <span class="text-xs uppercase font-bold ${c.status === 'judged' ? 'text-green-500' : 'text-amber-500'}">${c.status}</span>
+                                <span class="text-xs text-gray-600">${new Date(c.timestamp).toLocaleDateString()}</span>
+                            </div>
+                            <h4 class="text-xl font-bold mb-2">${c.accuser} v. ${c.accused}</h4>
+                            <p class="text-gray-400 mb-4">${c.description}</p>
+                            ${c.verdict ? `<div class="p-4 bg-white/5 rounded-xl border border-blue-500/30 text-blue-100"><span class="block text-[10px] font-bold text-blue-400 mb-1">AI VERDICT</span>${c.verdict}</div>` : 
+                            `<button onclick="requestVerdict('${doc.id}')" class="text-xs font-bold text-white underline">Summon Judge</button>`}
+                        </div>`;
+                    }).join('');
+                }, err => console.error("Cases listener error:", err));
+        }
+
+        window.requestVerdict = async (id) => {
+            const docRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('cases').doc(id);
+            const snap = await docRef.get();
+            const data = snap.data();
+            
+            try {
+                const res = await fetch(CLOUDFLARE_WORKER_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                await docRef.update({ verdict: result.verdict, status: 'judged' });
+            } catch (err) { 
+                console.error("Verdict error:", err);
+                alert("Judge failed to connect. Ensure your worker URL is configured."); 
+            }
+        };
+
+        window.onload = () => { 
+            // Initialization happens through onAuthStateChanged
+        };
+    </script>
+</body>
+</html>
